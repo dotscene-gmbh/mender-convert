@@ -49,6 +49,8 @@ RUN apt-get update && env DEBIAN_FRONTEND=noninteractive apt-get install -y \
 # zip and unzip archive
     zip  \
     unzip \
+# zstd compression
+    zstd \
 # manipulate binary and hex
     xxd \
 # JSON power tool

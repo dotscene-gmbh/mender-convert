@@ -369,7 +369,7 @@ case "${MENDER_COMPRESS_DISK_IMAGE}" in
         ;;
     zstd)
         log_info "Compressing ${img_path}.zst"
-        run_and_log_cmd "zstd --rm --force ${img_path}"
+        run_and_log_cmd "zstdmt --rm --force ${img_path}"
         ;;
     none)
         :

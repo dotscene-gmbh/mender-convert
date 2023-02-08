@@ -85,7 +85,7 @@ function decompress_image()  {
         zstd)
             log_info "Decompressing ${disk_image}..."
             disk_image=${disk_image%.zst}
-            zstdcat "${input_image}" > "${disk_image}"
+            zstdcat --threads=0 "${input_image}" > "${disk_image}"
             ;;
         *)
             log_fatal "Unsupported input image format: ${input_image}. We support: '.img', '.gz', '.zip', '.xz'."

@@ -51,6 +51,9 @@ MENDER_DATA_PART_FSTAB_OPTS="defaults"
 # Custom mkfs options for creating the data partition
 MENDER_DATA_PART_MKFS_OPTS=""
 
+# Set the fstab options the swap partition
+MENDER_SWAP_PART_FSTAB_OPTS="sw"
+
 # The file system will be grown to occupy the full block device. If the file
 # system is already at maximum size, no action will be performed.
 #
@@ -110,6 +113,10 @@ MENDER_BOOT_PART_SIZE_MB="40"
 # You rarely need to increase this number as this partition will be expanded
 # on first boot to occupy the renaming free blocks on the physical storage.
 MENDER_DATA_PART_SIZE_MB="128"
+
+# The size of the optional swap partition in the generated .biosimg, .sdimg or .uefiimg file. By default no swap partition is created, setting this variable to a value greater than zero will add one after the other partitions.
+#
+MENDER_SWAP_PART_SIZE_MB="0"
 
 # Alignment of partitions used when building partitioned images, expressed in
 # bytes
@@ -176,6 +183,9 @@ MENDER_ROOTFS_PART_B_NUMBER="3"
 # Partition number of persistent data partition
 MENDER_DATA_PART_NUMBER="4"
 
+# Partition number of optional swap partition, see MENDER_SWAP_PART_SIZE_MB
+MENDER_SWAP_PART_NUMBER="5"
+
 # Use partition uuids rather than device and partition numbers
 MENDER_ENABLE_PARTUUID="n"
 
@@ -190,6 +200,9 @@ MENDER_ROOTFS_PART_B=""
 
 # Partition used as the persistent data partition.
 MENDER_DATA_PART=""
+
+# Partition used as the swap partition.
+MENDER_SWAP_PART=""
 
 # Basename of DTB that should be loaded by the bootloader.
 MENDER_DTB_NAME=kernel.dtb

@@ -88,6 +88,7 @@ root_part=$(disk_root_part)
 # Sysfs device paths
 boot_part_device=$(disk_boot_part_device)
 data_part_device=$(disk_data_part_device)
+swap_part_device=$(disk_swap_part_device)
 root_part_a_device=$(disk_root_part_a_device)
 root_part_b_device=$(disk_root_part_b_device)
 
@@ -237,6 +238,11 @@ fi
 
 log_info "Using boot partition device in fstab: $boot_part_device"
 log_info "Using data partition device in fstab: $data_part_device"
+fstab_swap=""
+if (( ${MENDER_SWAP_PART_SIZE_MB} > 0 )); then
+    log_info "Using swap partition device in fstab: $swap_part_device"
+    fstab_swap="${swap_part_device} none  swap  ${MENDER_SWAP_PART_FSTAB_OPTS}  0  0"
+fi
 
 fstab=$(sed '/\/boot/d' work/rootfs/etc/fstab)
 fstab=$(sed '/.*\s\/\s.*/d' <<< "$fstab")
@@ -245,6 +251,7 @@ ${boot_part_device}   ${boot_part_mountpoint}          auto       ${MENDER_BOOT_
 /dev/root            /                    auto       ${MENDER_ROOT_PART_FSTAB_OPTS} 1  ${MENDER_ROOT_PART_FS_PASSNO}
 
 ${data_part_device}   /data          auto       ${MENDER_DATA_PART_FSTAB_OPTS}      0  0
+${fstab_swap}
 
 # entries kept from original fstab
 $fstab

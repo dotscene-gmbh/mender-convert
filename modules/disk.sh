@@ -145,6 +145,20 @@ disk_create_file_system_from_folder() {
     run_and_log_cmd "sudo umount work/output"
 }
 
+# Create swap image
+#
+# $1 - destination file
+# $2 - image size in sectors
+disk_create_swap() {
+    log_info "Creating a swap image"
+
+    run_and_log_cmd "dd if=/dev/zero of=${1} seek=${2} count=0 bs=512 status=none"
+
+    swap_loop_device=$(sudo losetup --find --show ${1})
+    run_and_log_cmd "sudo mkswap ${swap_loop_device}"
+    run_and_log_cmd "sudo losetup --detach ${swap_loop_device}"
+}
+
 # Print path to the boot partition filesystem image
 #
 disk_boot_part() {
@@ -265,6 +279,10 @@ disk_boot_part_device() {
 
 disk_data_part_device() {
     disk_get_part_device "${MENDER_DATA_PART_NUMBER}" "MENDER_DATA_PART"
+}
+
+disk_swap_part_device() {
+    disk_get_part_device "${MENDER_SWAP_PART_NUMBER}" "MENDER_SWAP_PART"
 }
 
 disk_root_part_a_device() {

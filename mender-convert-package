@@ -83,6 +83,7 @@ root_part=$(disk_root_part)
 # Sysfs device paths
 boot_part_device=$(disk_boot_part_device)
 data_part_device=$(disk_data_part_device)
+swap_part_device=$(disk_swap_part_device)
 root_part_a_device=$(disk_root_part_a_device)
 root_part_b_device=$(disk_root_part_b_device)
 
@@ -100,6 +101,7 @@ sudo mount ${root_part} work/rootfs
 disk_image_total_sectors=$(disk_mb_to_sectors ${MENDER_STORAGE_TOTAL_SIZE_MB})
 boot_part_sectors=$(disk_mb_to_sectors ${MENDER_BOOT_PART_SIZE_MB})
 data_part_sectors=$(disk_mb_to_sectors ${MENDER_DATA_PART_SIZE_MB})
+swap_part_sectors=$(disk_mb_to_sectors ${MENDER_SWAP_PART_SIZE_MB})
 alignment_sectors=$((${MENDER_PARTITION_ALIGNMENT} / 512))
 
 if [ "${MENDER_GRUB_EFI_INTEGRATION}" == "y" ]; then
@@ -139,7 +141,7 @@ boot_part_sectors=$(disk_align_sectors ${boot_part_sectors} ${MENDER_PARTITION_A
 
 # Calculate rootfs size
 rootfs_part_sectors=$(((${disk_image_total_sectors} - ${data_part_sectors} - \
-    ${boot_part_sectors} - ${overhead_sectors}) / 2))
+    ${boot_part_sectors} - ${swap_part_sectors} - ${overhead_sectors}) / 2))
 
 # Make sure rootfs size is aligned to MENDER_PARTITION_ALIGNMENT
 rootfs_part_sectors=$(disk_align_sectors ${rootfs_part_sectors} ${MENDER_PARTITION_ALIGNMENT})
@@ -237,6 +239,11 @@ disk_create_file_system_from_folder "work/data/" "work/data.img" \
     "${data_part_sectors}" "${image_fs_type}"
 run_and_log_cmd "rm -rf work/data"
 
+# Create swap image
+if (( ${MENDER_SWAP_PART_SIZE_MB} > 0 )); then
+    disk_create_swap "work/swap.img" "${swap_part_sectors}"
+fi
+
 if [ "${MENDER_CLIENT_INSTALL}" != "y" ]; then
     log_warn "Generating Artifact with no Mender client in it; not suitable for deployment"
 fi
@@ -250,6 +257,11 @@ log_info "Total disk size: $(disk_sectors_to_mb ${disk_image_total_sectors}) MiB
 log_info "  Boot partition    $(disk_sectors_to_mb ${boot_part_sectors}) MiB"
 log_info "  RootFS partitions $(disk_sectors_to_mb ${rootfs_part_sectors}) MiB x 2"
 log_info "  Data partition    $(disk_sectors_to_mb ${data_part_sectors}) MiB"
+if (( ${MENDER_SWAP_PART_SIZE_MB} > 0 )); then
+    log_info "  Swap partition    $(disk_sectors_to_mb ${swap_part_sectors}) MiB"
+else
+    log_info "  No swap partition"
+fi
 
 # Initialize sdcard image file
 run_and_log_cmd \
@@ -266,6 +278,9 @@ rootfsb_end=$((${rootfsb_start} + ${rootfs_part_sectors} - 1))
 
 data_start=$(disk_align_sectors ${rootfsb_end} ${MENDER_PARTITION_ALIGNMENT})
 data_end=$((${data_start} + ${data_part_sectors} - 1))
+
+swap_start=$(disk_align_sectors ${data_end} ${MENDER_PARTITION_ALIGNMENT})
+swap_end=$((${swap_start} + ${swap_part_sectors} - 1))
 
 if [ -n "${MENDER_PARTITION_SCHEME}" ]; then
     # Force partition scheme to the one from configs
@@ -295,6 +310,9 @@ run_and_log_cmd "${PARTED} -s ${img_path} set 1 boot on"
 run_and_log_cmd "${PARTED} -s ${img_path} -- unit s mkpart primary ext4 ${rootfsa_start} ${rootfsa_end}"
 run_and_log_cmd "${PARTED} -s ${img_path} -- unit s mkpart primary ext4 ${rootfsb_start} ${rootfsb_end}"
 run_and_log_cmd "${PARTED} -s ${img_path} -- unit s mkpart primary ext4 ${data_start} ${data_end}"
+if (( ${MENDER_SWAP_PART_SIZE_MB} > 0 )); then
+    run_and_log_cmd "${PARTED} -s ${img_path} -- unit s mkpart primary linux-swap ${swap_start} ${swap_end}"
+fi
 run_and_log_cmd "${PARTED} -s ${img_path} print"
 
 # Update partition uuids if required
@@ -303,6 +321,9 @@ if [ "${MENDER_ENABLE_PARTUUID}" == "y" ]; then
     rootfsa_partuuid=$(disk_get_partuuid_from_device "${root_part_a_device}")
     rootfsb_partuuid=$(disk_get_partuuid_from_device "${root_part_b_device}")
     data_partuuid=$(disk_get_partuuid_from_device "${data_part_device}")
+    if (( ${MENDER_SWAP_PART_SIZE_MB} > 0 )); then
+        swap_partuuid=$(disk_get_partuuid_from_device "${swap_part_device}")
+    fi
 
     if [ "${partition_scheme}" == "gpt" ]; then
         log_info "Updating GPT partition uuids in image: '${img_path}'"
@@ -310,6 +331,9 @@ if [ "${MENDER_ENABLE_PARTUUID}" == "y" ]; then
         run_and_log_cmd "sgdisk -u ${MENDER_ROOTFS_PART_A_NUMBER}:${rootfsa_partuuid} '${img_path}'"
         run_and_log_cmd "sgdisk -u ${MENDER_ROOTFS_PART_B_NUMBER}:${rootfsb_partuuid} '${img_path}'"
         run_and_log_cmd "sgdisk -u ${MENDER_DATA_PART_NUMBER}:${data_partuuid} '${img_path}'"
+        if (( ${MENDER_SWAP_PART_SIZE_MB} > 0 )); then
+            run_and_log_cmd "sgdisk -u ${MENDER_SWAP_PART_NUMBER}:${swap_partuuid} '${img_path}'"
+        fi
     else
         diskid=$(disk_get_partuuid_dos_diskid_from_device "${root_part_a_device}")
         log_info "Updating MBR disk identifier for partition uuid support to: '0x${diskid}'"
@@ -337,6 +361,10 @@ log_info "Writing rootfsb partition image"
 disk_write_at_offset "${output_dir}/rootfs.img" "${img_path}" "${rootfsb_start}"
 log_info "Writing data partition image"
 disk_write_at_offset "${output_dir}/data.img" "${img_path}" "${data_start}"
+if (( ${MENDER_SWAP_PART_SIZE_MB} > 0 )); then
+    log_info "Writing swap partition image"
+    disk_write_at_offset "${output_dir}/swap.img" "${img_path}" "${swap_start}"
+fi
 
 log_info "Performing platform specific package operations (if any)"
 for hook in "${PLATFORM_PACKAGE_HOOKS[@]}"; do
@@ -406,9 +434,17 @@ testscfg_add "MENDER_BOOT_PART" "${boot_part_device}"
 testscfg_add "MENDER_ROOTFS_PART_A" "${root_part_a_device}"
 testscfg_add "MENDER_ROOTFS_PART_B" "${root_part_b_device}"
 testscfg_add "MENDER_DATA_PART" "${data_part_device}"
+if (( ${MENDER_SWAP_PART_SIZE_MB} > 0 )); then
+    testscfg_add "MENDER_SWAP_PART" "${swap_part_device}"
+else
+    testscfg_add "MENDER_SWAP_PART" "no swap"
+fi
 testscfg_add "MENDER_BOOT_PART_MOUNT_LOCATION" "${boot_part_mountpoint}"
 testscfg_add "MENDER_BOOT_PART_SIZE_MB" "$(disk_sectors_to_mb ${boot_part_sectors})"
 testscfg_add "MENDER_DATA_PART_SIZE_MB" "${MENDER_DATA_PART_SIZE_MB}"
+if (( ${MENDER_SWAP_PART_SIZE_MB} > 0 )); then
+    testscfg_add "MENDER_SWAP_PART_SIZE_MB" "${MENDER_SWAP_PART_SIZE_MB}"
+fi
 testscfg_add "MENDER_DEVICE_TYPE" "${device_type}"
 testscfg_add "MENDER_PARTITIONING_OVERHEAD_KB" "$(((${overhead_sectors} * 512) / 1024))"
 testscfg_add "MENDER_PARTITION_ALIGNMENT" "${MENDER_PARTITION_ALIGNMENT}"

@@ -52,7 +52,7 @@ MENDER_DATA_PART_FSTAB_OPTS="defaults"
 MENDER_DATA_PART_MKFS_OPTS=""
 
 # Set the fstab options the swap partition
-MENDER_SWAP_PART_FSTAB_OPTS="sw"
+MENDER_SWAP_PART_FSTAB_OPTS="sw,x-systemd.device-timeout=10s"
 
 # The file system will be grown to occupy the full block device. If the file
 # system is already at maximum size, no action will be performed.

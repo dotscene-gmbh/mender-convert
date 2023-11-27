@@ -219,6 +219,19 @@ fi
 disk_create_file_system_from_folder "work/rootfs/" "work/rootfs.img" \
     "${rootfs_image_sectors}" "${image_fs_type}"
 
+
+if [ "${MENDER_CLIENT_INSTALL}" != "y" ]; then
+    log_warn "Generating Artifact with no Mender client in it; not suitable for deployment"
+fi
+mender_create_artifact "${device_type}" "${MENDER_ARTIFACT_NAME}" "${image_name}"
+
+
+if [ "${MENDER_CREATE_DISK_IMAGE}" != "y" ]; then
+    log_info "Skipping creation of disk-image (see MENDER_CREATE_DISK_IMAGE)"
+    exit
+fi
+
+
 log_info "Copying root filesystem image to deploy directory"
 run_and_log_cmd "cp --sparse=always work/rootfs.img deploy/${image_name}.${image_fs_type}"
 
@@ -244,10 +257,6 @@ if (( ${MENDER_SWAP_PART_SIZE_MB} > 0 )); then
     disk_create_swap "work/swap.img" "${swap_part_sectors}"
 fi
 
-if [ "${MENDER_CLIENT_INSTALL}" != "y" ]; then
-    log_warn "Generating Artifact with no Mender client in it; not suitable for deployment"
-fi
-mender_create_artifact "${device_type}" "${MENDER_ARTIFACT_NAME}" "${image_name}"
 
 log_info "Creating Mender compatible disk-image"
 

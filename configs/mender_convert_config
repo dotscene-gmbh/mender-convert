@@ -274,6 +274,7 @@ mender_create_artifact() {
     local -r device_types="${1}"
     local -r artifact_name="${2}"
     local -r image_name="${3}"
+    local -r software_version="${4:-${artifact_name}}"
     local -r all_device_types="$(for device_type in $device_types; do echo " --device-type $device_type"; done)"
 
     mender_artifact=deploy/${image_name}.mender
@@ -285,5 +286,6 @@ mender_create_artifact() {
       --file work/rootfs.img \
       --output-path ${mender_artifact} \
       --artifact-name ${artifact_name} \
+      --software-version ${software_version} \
       ${all_device_types}"
 }

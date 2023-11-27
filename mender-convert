@@ -113,6 +113,12 @@ if [ -z "${MENDER_ARTIFACT_NAME}" ]; then
     exit 1
 fi
 
+if [ -z "${MENDER_ARTIFACT_ROOTFS_VERSION}" ]; then
+    log_warn "It seems that you have not defined MENDER_ARTIFACT_ROOTFS_VERSION"
+    log_warn "Falling back to the artifact name: ${MENDER_ARTIFACT_NAME}"
+    export MENDER_ARTIFACT_ROOTFS_VERSION=${MENDER_ARTIFACT_NAME}
+fi
+
 testscfg_init
 
 parse_cli_options "$@"

@@ -58,17 +58,17 @@ fi
 mkdir -p ${output_dir}/etc/mender
 cat <<- EOF > ${output_dir}/etc/mender/mender.conf
 {
-  "ServerURL": "${server_url}",
 EOF
 
 if [ -n "${server_cert}" ]; then
     cat <<- EOF >> ${output_dir}/etc/mender/mender.conf
-  "ServerCertificate": "/etc/mender/server.crt"
+  "ServerCertificate": "/etc/mender/server.crt",
 EOF
     cp -f "${server_cert}" ${output_dir}/etc/mender/server.crt
 fi
 
 cat <<- EOF >> ${output_dir}/etc/mender/mender.conf
+  "ServerURL": "${server_url}"
 }
 EOF
 

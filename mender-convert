@@ -130,4 +130,4 @@ prepend_extraargs="--config ${ocfile}"
 ./mender-convert-package ${prepend_extraargs} "$@" ${append_extraargs}
 
 echo "Output Artifacts and images can be found in the deploy directory:"
-ls -1 deploy/*
+ls -t1r deploy/*
